@@ -25,15 +25,31 @@ pipeline {
             }
         }
 
+        stage('Docker Login') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                }
+            }
+        }
+
         stage('Push Docker Image') {
             steps {
                 sh 'docker push king1941/node-docker-app:${BUILD_NUMBER}'
             }
         }
 
-        stage('Create container') {
+        stage('Cleanup Old Containers') {
             steps {
-                sh 'docker run -d -p 3000:8080 king1941/node-docker-app:${BUILD_NUMBER}'
+                sh '''
+                docker ps -aq --filter "name=node-docker-app" | xargs -r docker rm -f
+                '''
+            }
+        }
+
+        stage('Create Container') {
+            steps {
+                sh 'docker run -d -p 3000:3000 --name node-docker-app king1941/node-docker-app:${BUILD_NUMBER}'
             }
         }
 
